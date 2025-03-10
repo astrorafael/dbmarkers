@@ -1,0 +1,5 @@
+{# Reaper Template -#}
+#,Name,Start
+{% for marker in markers -%}
+{{marker.id}},,{{marker.timestamp}}
+{% endfor -%}

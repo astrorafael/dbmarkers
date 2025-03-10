@@ -30,7 +30,7 @@ Repository = "https://github.com/astrorafael/dbmarkers.git"
 
 [project.scripts]
 markers-transcribe = "dbmarkers.transcribe.main:main"
-
+markers-reaper = "dbmarkers.reaper.main:main"
 
 [build-system]
 requires = ["setuptools >= 45", "wheel", "setuptools_scm[toml]>=6.2"]

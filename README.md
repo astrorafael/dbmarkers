@@ -22,6 +22,7 @@ This utility takes this OUTFILE and incrporates this information into DAWs and m
 List of supported DAWs and musical apps:
 
 * [Transcribe!](https://www.seventhstring.com/xscribe/overview.html)
+* [Reaper](https://www.reaper.fm/)
 
 # Installation
 
@@ -36,3 +37,15 @@ pip install dbmarkers
 ```bash
 markers-transcribe --console generate --input-file markers_from_dbn_beat_tracker.txt  --output-file your_transcribe_file.xsc
 ```
+
+## Reaper
+
+```bash
+markers-reaper --console generate --input-file markers_from_dbn_beat_tracker.txt  --output-file your_reaper_project_file.csv
+```
+
+Project markers must be imported in Reaper from the Dialog "View > Region/Marger Manager", clicking on the Options Button and selecting "Import regions/markers (replace existing) ..."
+
+![Reaper Project Markers inport](doc/images/img/reaper_import_markers.png "Import project markers into a Reaper Song")
+
+To convert Project Markers into a Tempo map, execute the action "SWS/BR: Convert project markers to tempo. A dialog will open. Usually, time signature is 4/4 and `DBNDownBeatTracker` includes 4 beats per bar.

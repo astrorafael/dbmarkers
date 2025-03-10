@@ -10,7 +10,7 @@ import functools
 
 # Typing hints
 from argparse import ArgumentParser, Namespace
-from typing import Sequence
+from typing import Sequence, Tuple
 
 # ---------------------
 # Third party libraries
@@ -21,13 +21,13 @@ from lica.jinja2 import render_from
 
 from .. import __version__
 from ..common import parser as prs
-from ..common.madmom import Marker, read_downbeat_markers
+from ..common.madmom import read_downbeat_markers, Marker
 
 # ---------
 # CONSTANTS
 # ---------
 
-TEMPLATE = "transcribe.j2"
+TEMPLATE = "reaper.j2"
 
 # -----------------------
 # Module global variables
@@ -42,10 +42,12 @@ render = functools.partial(render_from, package)
 # ==================
 
 
-def to_transcribe(item: Marker) -> Marker:
-    item["timestamp"] = item["timestamp"].strftime("%H:%M:%S.%f")
-    item["beat"] = "M" if item["beat"] == 1 else "B"
-    return item
+def to_reaper(item: Tuple[int, Marker]) -> Marker:
+    i, marker = item
+    marker["timestamp"] = marker["timestamp"].strftime("%H:%M:%S.%f")
+    marker["beat"] = "M" if marker["beat"] == 1 else "B"
+    marker["id"] = f"M{i}"
+    return marker
 
 
 def append_to_file(path: str, markers: str) -> None:
@@ -73,22 +75,13 @@ def cli_generate(args: Namespace) -> None:
     ipath = args.input_file
     opath = args.output_file
     markers = read_downbeat_markers(ipath)
-    markers = list(map(to_transcribe, markers))
+    markers = list(map(to_reaper, enumerate(markers,start=1)))
     context = {"markers": markers, "howmany": len(markers)}
     rendered = render(TEMPLATE, context)
-    with open(opath, "r") as fd:
-        lines = fd.readlines()
-    if any(line.startswith("SectionStart,Markers") for line in lines):
-        log.info("Updating Markers section on file %s", args.output_file)
-        edit_file(args.output_file, lines, rendered)
-        msg = "Edited"
-    else:
-        log.info("Adding new Markers section on file %s", args.output_file)
-        append_to_file(opath, rendered)
-        msg = "Appended"
-    bars = [m for m in markers if m["beat"] == "M"]
-    beats = [m for m in markers if m["beat"] == "B"]
-    log.info("%s %d bar markers & %d beat markers", msg, len(bars), len(beats))
+    with open(opath, "w") as fd:
+        fd.write(rendered)
+    log.info("Generated new Project Markers on file %s", opath)
+  
 
 
 # ========================
@@ -106,8 +99,8 @@ def add_args(parser: ArgumentParser) -> None:
     # ---------------------------------------------------------------
     parser = subparser.add_parser(
         "generate",
-        parents=[prs.ifile(), prs.otranscribe()],
-        help="Generate Tempo markers fron Transcribe! (c) software",
+        parents=[prs.ifile(), prs.oreaper()],
+        help="Generate Reaper Project markers",
     )
     parser.set_defaults(func=cli_generate)
 
@@ -127,7 +120,7 @@ def main():
         add_args_func=add_args,
         name=__name__,
         version=__version__,
-        description="Generate Transcribe! beat/downbeat markers",
+        description="Generate Reaper Project markers",
     )
 
 
