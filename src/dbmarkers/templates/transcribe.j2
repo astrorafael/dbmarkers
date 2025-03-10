@@ -1,0 +1,10 @@
+{# Beware of newlines before and after the section -#}
+
+
+SectionStart,Markers
+Howmany,{{ howmany }}
+{% for marker in markers -%}
+{{marker.kind}},-1,1,,0,{{marker.time}}
+{% endfor -%}
+SectionEnd,Markers
+
