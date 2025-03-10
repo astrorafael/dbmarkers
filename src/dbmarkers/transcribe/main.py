@@ -5,10 +5,8 @@
 # System wide imports
 # -------------------
 
-import csv
 import logging
 import functools
-from datetime import datetime, timedelta
 
 # Typing hints
 from argparse import ArgumentParser, Namespace
@@ -23,6 +21,8 @@ from lica.jinja2 import render_from
 
 from .. import __version__
 from ..common import parser as prs
+from ..common.madmom import read_downbeat_markers
+
 # ---------
 # CONSTANTS
 # ---------
@@ -46,43 +46,17 @@ render = functools.partial(render_from, package)
 # ==================
 
 
-def to_time(dt: datetime, delta: timedelta) -> str:
-    return (dt + delta).strftime("%H:%M:%S.%f")
-
-
-def get_markers(path: str) -> Markers:
-    markers = list()
-    now = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    with open(path, newline="") as csvfile:
-        reader = csv.DictReader(csvfile, fieldnames=HEADER, delimiter="\t")
-        for row in reader:
-            delta = timedelta(seconds=float(row["timestamp"]))
-            markers.append(
-                {
-                    "kind": "M" if int(row["beat"]) == 1 else "B",
-                    "time": to_time(now, delta),
-                }
-            )
-    return markers
-
-
-# def render(template_path: str, context: Dict[str, Any]):
-#     if not os.path.exists(template_path):
-#         raise IOError(
-#             "No Jinja2 template file found at %d. Exiting ..." % (template_path,)
-#         )
-#     path, filename = os.path.split(template_path)
-#     return (
-#         jinja2.Environment(loader=jinja2.FileSystemLoader(path or "./"))
-#         .get_template(filename)
-#         .render(context)
-#     )
+def to_transcribe(item: Marker) -> Marker:
+    item["timestamp"] = item["timestamp"].strftime("%H:%M:%S.%f")
+    item["beat"] = "M" if item["beat"] == 1 else "B"
+    return item
 
 
 def append_to_file(path: str, markers: str) -> None:
     with open(path, "a") as fd:
         fd.write("\n")
         fd.write(markers)
+
 
 def edit_file(path: str, lines: Sequence[str], markers: str) -> None:
     cut_point = dict()
@@ -100,21 +74,24 @@ def edit_file(path: str, lines: Sequence[str], markers: str) -> None:
 
 
 def cli_generate(args: Namespace) -> None:
-    markers = get_markers(args.input_file)
+    ipath = args.input_file
+    opath = args.output_file
+    markers = read_downbeat_markers(ipath)
+    markers = list(map(to_transcribe, markers))
     context = {"markers": markers, "howmany": len(markers)}
-    result = render(TEMPLATE, context)
-    with open(args.output_file, "r") as fd:
+    rendered = render(TEMPLATE, context)
+    with open(opath, "r") as fd:
         lines = fd.readlines()
     if any(line.startswith("SectionStart,Markers") for line in lines):
         log.info("Updating Markers section on file %s", args.output_file)
-        edit_file(args.output_file, lines, result)
+        edit_file(args.output_file, lines, rendered)
         msg = "Edited"
     else:
         log.info("Adding new Markers section on file %s", args.output_file)
-        append_to_file(args.output_file, result)
+        append_to_file(opath, rendered)
         msg = "Appended"
-    bars = [m for m in markers if m["kind"] == "M"]
-    beats = [m for m in markers if m["kind"] == "B"]
+    bars = [m for m in markers if m["beat"] == "M"]
+    beats = [m for m in markers if m["beat"] == "B"]
     log.info("%s %d bar markers & %d beat markers", msg, len(bars), len(beats))
 
 
